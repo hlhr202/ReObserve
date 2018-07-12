@@ -1,18 +1,19 @@
-import { IAction, IAjaxSubsription, IAjaxEmit, IActionMapper, IAjaxMapper } from "./type";
+import { IActionEmit, IAjaxSubsription, IAjaxEmit, IActionMapper, IAjaxMapper, IActionSubscription } from "./type";
 import { Subject, merge } from "rxjs";
-import { startWith, map } from "rxjs/operators";
+import { startWith, map, filter } from "rxjs/operators";
 
 class ReObserve<T = {}> {
-    
-    static globalActionStream$ = new Subject<IAction<any>>()
-    static dispatch<P = any>(action: IAction<P>) {
-        ReObserve.globalActionStream$.next(action)
+
+    static globalActionStream$ = new Subject<IActionSubscription<any>>()
+    static dispatch<P = any>(action: IActionEmit<P>) {
+        const { type, payload } = action
+        ReObserve.globalActionStream$.next({ type, payload, source: 'GLOBAL' })
     }
 
     static globalAjaxStream$ = new Subject<IAjaxSubsription<any>>()
     static fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>) {
         ajax$.subscribe(payload => {
-            ReObserve.globalAjaxStream$.next({ type, payload })
+            ReObserve.globalAjaxStream$.next({ type, payload, source: 'GLOBAL' })
         }, err => {
             ReObserve.globalAjaxStream$.error(err)
         }, () => {
@@ -26,11 +27,19 @@ class ReObserve<T = {}> {
 
     private _watcher?: (prev: T, curr: T) => void
 
-    private _actionStream$ = new Subject<IAction<any>>()
-    private _actionMapper: IActionMapper<T> = (state, action$) => action$.pipe(map(action => action.payload))
+    private _actionStream$ = new Subject<IActionSubscription<any>>()
+    private _actionMapper: IActionMapper<T> = (state, action$) =>
+        action$.pipe(
+            filter(action => action.source === 'SELF'),
+            map(action => action.payload)
+        )
 
     private _ajaxStream$ = new Subject<IAjaxSubsription<any>>()
-    private _ajaxMapper: IAjaxMapper<T> = (state, ajax$) => ajax$.pipe(map(ajax => ajax.payload.response))
+    private _ajaxMapper: IAjaxMapper<T> = (state, ajax$) =>
+        ajax$.pipe(
+            filter(ajax => ajax.source === 'SELF'),
+            map(ajax => ajax.payload.response)
+        )
 
     private _histryStream$ = new Subject<T>()
 
@@ -67,12 +76,13 @@ class ReObserve<T = {}> {
         this._watcher = watcher
         return this
     }
-    dispatch<P = any>(action: IAction<P>) {
-        this._actionStream$.next(action)
+    dispatch<P = any>(action: IActionEmit<P>) {
+        const { type, payload } = action
+        this._actionStream$.next({ type, payload, source: 'SELF' })
     }
     fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>) {
         ajax$.subscribe(payload => {
-            this._ajaxStream$.next({ type, payload })
+            this._ajaxStream$.next({ type, payload, source: 'SELF' })
         }, err => {
             this._ajaxStream$.error(err)
         }, () => {
