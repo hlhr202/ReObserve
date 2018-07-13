@@ -1,6 +1,6 @@
 {
   "name": "@hlhr202/reobserve",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Powerful observable state transition library that utilised Rx.js and Redux design pattern",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -9,31 +9,31 @@
     "build": "tsc -p ./tsconfig.json"
   },
   "license": "MIT",
-	"bugs": {
-		"url": "https://github.com/hlhr202/ReObserve/issues",
-		"email": "hlhr202@163.com"
-	},
-	"author": {
-		"name": "hlhr202",
-		"url": "https://github.com/hlhr202",
-		"email": "hlhr202@163.com"
+  "bugs": {
+    "url": "https://github.com/hlhr202/ReObserve/issues",
+    "email": "hlhr202@163.com"
+  },
+  "author": {
+    "name": "hlhr202",
+    "url": "https://github.com/hlhr202",
+    "email": "hlhr202@163.com"
   },
   "repository": {
-		"type": "git",
-		"url": "https://github.com/hlhr202/ReObserve"
+    "type": "git",
+    "url": "https://github.com/hlhr202/ReObserve"
   },
   "keywords": [
     "react",
     "observable",
     "reactivex",
     "frp",
-		"redux",
-		"state",
-		"reducer",
-		"functional",
-		"immutable",
-		"rxjs"
-	],
+    "redux",
+    "state",
+    "reducer",
+    "functional",
+    "immutable",
+    "rxjs"
+  ],
   "devDependencies": {
     "ts-node": "^7.0.0",
     "@types/node": "^10.5.2",
