@@ -1,11 +1,8 @@
 import { Subject, Subscription, Observable, PartialObserver } from "rxjs";
-import { IActionSubscription, IActionEmit, IAjaxSubsription, IAjaxEmit, IActionMapper, IAjaxMapper } from "./type";
+import { IActionEmit, IAjaxSubsription, IAjaxEmit, IActionMapper, IAjaxMapper } from "./type";
 declare class ReObserve<T = void> extends Subject<T> {
-    static globalActionStream$: Subject<IActionSubscription<any>>;
-    static dispatch<P = any>(action: IActionEmit<P>): void;
     static globalAjaxStream$: Subject<IAjaxSubsription<any>>;
     static fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>): void;
-    static defaultActionMapper: IActionMapper<any>;
     static defaultAjaxMapper: IAjaxMapper<any>;
     source: Observable<T | void>;
     private _current;
@@ -31,12 +28,11 @@ declare class ReObserve<T = void> extends Subject<T> {
     mapAction(mapper: IActionMapper<T>): this;
     merge(...stream$: (Observable<T | void>[])): this;
     private join;
-    next(value?: T): void;
+    next(value: T | void): void;
     complete(): void;
     error(err: any): void;
     subscribe(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): Subscription;
 }
 export default ReObserve;
-export declare const dispatch: typeof ReObserve.dispatch;
 export declare const fetch: typeof ReObserve.fetch;
 //# sourceMappingURL=index.d.ts.map

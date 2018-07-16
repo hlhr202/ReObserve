@@ -8,7 +8,8 @@ export interface IActionEmit<T> {
     type: string;
     payload?: T;
 }
-export interface IActionSubscription<T> extends IActionEmit<T> {
+export interface IActionSubscription<C, T> extends IActionEmit<T> {
+    state: C;
     source: 'GLOBAL' | 'SELF';
 }
 export interface IAjaxSubsription<T> {
@@ -20,6 +21,6 @@ export interface IAjaxEmit<T> {
     type: string;
     ajax$: Observable<IAjaxResponse<T>>;
 }
-export declare type IActionMapper<C, A = any> = (currentState: C, action$: Observable<IActionSubscription<A>>, context: ReObserve<C>) => Observable<C | void>;
+export declare type IActionMapper<C, A = any> = (action$: Observable<IActionSubscription<C, A>>) => Observable<C | void>;
 export declare type IAjaxMapper<C, A = any> = (currentState: C, ajax$: Observable<IAjaxSubsription<A>>, context: ReObserve<C>) => Observable<C | void>;
 //# sourceMappingURL=type.d.ts.map

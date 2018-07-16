@@ -3,11 +3,11 @@ import { IActionSubscription, IActionEmit, IAjaxSubsription, IAjaxEmit, IActionM
 import { filter, map, startWith } from "rxjs/operators";
 
 class ReObserve<T = void> extends Subject<T> {
-    static globalActionStream$ = new Subject<IActionSubscription<any>>()
-    static dispatch<P = any>(action: IActionEmit<P>) {
-        const { type, payload } = action
-        ReObserve.globalActionStream$.next({ type, payload, source: 'GLOBAL' })
-    }
+    // static globalActionStream$ = new Subject<IActionSubscription<any>>()
+    // static dispatch<P = any>(action: IActionEmit<P>) {
+    //     const { type, payload } = action
+    //     ReObserve.globalActionStream$.next({ type, payload, source: 'GLOBAL' })
+    // }
 
     static globalAjaxStream$ = new Subject<IAjaxSubsription<any>>()
     static fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>) {
@@ -20,10 +20,10 @@ class ReObserve<T = void> extends Subject<T> {
         })
     }
 
-    static defaultActionMapper: IActionMapper<any> = (state, action$) => action$.pipe(
-        filter(action => action.source === 'SELF'),
-        map(action => action.payload)
-    )
+    // static defaultActionMapper: IActionMapper<any> = (state, action$) => action$.pipe(
+    //     filter(action => action.source === 'SELF'),
+    //     map(action => action.payload)
+    // )
 
     static defaultAjaxMapper: IAjaxMapper<any> = (state, ajax$) => ajax$.pipe(
         filter(ajax => ajax.source === 'SELF'),
@@ -35,7 +35,7 @@ class ReObserve<T = void> extends Subject<T> {
     private _historyArray: T[] = []
     private _enableHistory = false
     private _watcher?: (prev: T, curr: T) => void
-    private _actionStream$ = new Subject<IActionSubscription<any>>()
+    private _actionStream$ = new Subject<IActionSubscription<T, any>>()
     private _ajaxStream$ = new Subject<IAjaxSubsription<any>>()
     private _histryStream$ = new Subject<T | void>()
     private _joinStream$!: Observable<T>
@@ -44,7 +44,7 @@ class ReObserve<T = void> extends Subject<T> {
     constructor(initialState?: T) {
         super()
         initialState && this.startWith(initialState)
-        this.mapAction(ReObserve.defaultActionMapper).mapAjax(ReObserve.defaultAjaxMapper).merge(this._otherStream$)
+        //this.mapAction(ReObserve.defaultActionMapper).mapAjax(ReObserve.defaultAjaxMapper)
         return this
     }
 
@@ -89,7 +89,7 @@ class ReObserve<T = void> extends Subject<T> {
 
     dispatch<P = any>(action: IActionEmit<P>) {
         const { type, payload } = action
-        this._actionStream$.next({ type, payload, source: 'SELF' })
+        this._actionStream$.next({ type, payload, source: 'SELF', state: this._current })
     }
 
     fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>) {
@@ -105,12 +105,17 @@ class ReObserve<T = void> extends Subject<T> {
 
     mapAjax(mapper: IAjaxMapper<T>) {
         const ajaxStream$ = mapper(this._current, merge(this._ajaxStream$, ReObserve.globalAjaxStream$), this)
-        return this.merge(ajaxStream$)
+        ajaxStream$.subscribe(next => this.next(next))
+        return this
     }
 
     mapAction(mapper: IActionMapper<T>) {
-        const actionStream$ = mapper(this._current, merge(this._actionStream$, ReObserve.globalActionStream$), this)
-        return this.merge(actionStream$)
+        //const actionStream$ = mapper(() => this._current, merge(this._actionStream$/*, ReObserve.globalActionStream$*/), this)
+        //actionStream$.subscribe(next => this.next(next))
+        mapper(this._actionStream$).subscribe(value => {
+            this.next(value)
+        })
+        return this
     }
 
     merge(...stream$: (Observable<T | void>[])) {
@@ -120,7 +125,7 @@ class ReObserve<T = void> extends Subject<T> {
 
     private join() {
         if (!this._joinStream$) {
-            this.source.subscribe(next => {
+            this._otherStream$.subscribe(next => {
                 if (next && next !== this._current) {
                     const previous = this._current
                     this._enableHistory && this._historyArray.push(previous)
@@ -128,19 +133,22 @@ class ReObserve<T = void> extends Subject<T> {
                     this._watcher && previous !== next && this._watcher(previous, next)
                 }
             })
-            this._joinStream$ = merge<T>(this._histryStream$, this.source)
+            this._joinStream$ = merge<T>(this._histryStream$, this._otherStream$, this.source)
         }
     }
 
-    next(value?: T) {
-        return this._otherStream$.next(value)
+    next(value: T | void) {
+        this.join()
+        return value ? this._otherStream$.next(value) : this._otherStream$.next()
     }
 
     complete() {
+        this.join()
         return this._otherStream$.complete()
     }
 
     error(err: any) {
+        this.join()
         return this._otherStream$.error(err)
     }
 
@@ -151,5 +159,5 @@ class ReObserve<T = void> extends Subject<T> {
 }
 
 export default ReObserve
-export const dispatch = ReObserve.dispatch
+//export const dispatch = ReObserve.dispatch
 export const fetch = ReObserve.fetch
