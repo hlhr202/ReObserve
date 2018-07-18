@@ -41,6 +41,7 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     error(err: any): void;
     subscribe(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): Subscription;
     unsubscribe(): void;
+    asObservable(): Subscription;
 }
 export default ReObserve;
 export declare const dispatch: typeof ReObserve.dispatch;

@@ -26,7 +26,12 @@ const actionMapper: IActionMapper<ICounter> = action$ => {
     )
 }
 
-const counter$ = new ReObserve(initialCounter).mapAction(actionMapper)
+const watcher = (prev: ICounter, next: ICounter) => {
+    console.log('prev', prev)
+    console.log('next', next)
+}
+
+const counter$ = new ReObserve(initialCounter).mapAction(actionMapper).watch(watcher)
 
 counter$.subscribe(counter => console.log(counter))
 

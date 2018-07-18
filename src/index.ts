@@ -1,4 +1,4 @@
-import { Subject, Subscription, merge, Observable, empty, PartialObserver, SubscriptionLike, Subscribable } from "rxjs";
+import { Subject, Subscription, merge, Observable, empty, PartialObserver, SubscriptionLike, Subscribable, pipe } from "rxjs";
 import { IActionSubscription, IActionEmit, IAjaxSubsription, IAjaxEmit, IActionMapper, IAjaxMapper, IGlobalActionSubscription, IGlobalAjaxSubsription } from "./type";
 import { filter, map, startWith } from "rxjs/operators";
 
@@ -30,7 +30,7 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         map(ajax => ajax.payload.response)
     )
 
-    source!: Observable<T | void>
+    //source!: Observable<T | void>
     private _current!: T
     private _historyArray: T[] = []
     private _enableHistory = false
@@ -89,7 +89,6 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
 
     startWith(initialState?: T) {
         if (initialState) this._current = initialState
-        this.source = empty().pipe(startWith(this._current))
         return this
     }
 
@@ -152,7 +151,7 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
                     this._watcher && previous !== next && this._watcher(previous, next)
                 }
             })
-            this._joinStream$ = merge<T>(this._histryStream$, this._source$)
+            this._joinStream$ = merge<T>(this._histryStream$, this._source$).pipe(startWith(this._current))
             this.closed = false
         }
     }
@@ -187,6 +186,12 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         this._histryStream$.unsubscribe()
         this._joinSubscription.unsubscribe()
         this.closed = true
+    }
+
+    asObservable() {
+        this.join()
+        this.closed = false
+        return this._joinSubscription
     }
 }
 
