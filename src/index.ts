@@ -192,5 +192,5 @@ class ReObserve<T = void> extends Observable<T> implements SubscriptionLike {
 }
 
 export default ReObserve
-//export const dispatch = ReObserve.dispatch
+export const dispatch = ReObserve.dispatch
 export const fetch = ReObserve.fetch

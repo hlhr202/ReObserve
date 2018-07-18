@@ -43,5 +43,6 @@ declare class ReObserve<T = void> extends Observable<T> implements SubscriptionL
     unsubscribe(): void;
 }
 export default ReObserve;
+export declare const dispatch: typeof ReObserve.dispatch;
 export declare const fetch: typeof ReObserve.fetch;
 //# sourceMappingURL=index.d.ts.map
