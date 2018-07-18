@@ -1,6 +1,6 @@
-import { Subject, Subscription, Observable, PartialObserver, SubscriptionLike } from "rxjs";
+import { Subject, Subscription, Observable, PartialObserver, SubscriptionLike, Subscribable } from "rxjs";
 import { IActionEmit, IAjaxEmit, IActionMapper, IAjaxMapper, IGlobalActionSubscription, IGlobalAjaxSubsription } from "./type";
-declare class ReObserve<T = void> extends Observable<T> implements SubscriptionLike {
+declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     static globalActionStream$: Subject<IGlobalActionSubscription<any>>;
     static dispatch<P = any>(action: IActionEmit<P>): void;
     static globalAjaxStream$: Subject<IGlobalAjaxSubsription<any>>;

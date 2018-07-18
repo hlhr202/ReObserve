@@ -1,8 +1,8 @@
-import { Subject, Subscription, merge, Observable, empty, PartialObserver, SubscriptionLike } from "rxjs";
+import { Subject, Subscription, merge, Observable, empty, PartialObserver, SubscriptionLike, Subscribable } from "rxjs";
 import { IActionSubscription, IActionEmit, IAjaxSubsription, IAjaxEmit, IActionMapper, IAjaxMapper, IGlobalActionSubscription, IGlobalAjaxSubsription } from "./type";
 import { filter, map, startWith } from "rxjs/operators";
 
-class ReObserve<T = void> extends Observable<T> implements SubscriptionLike {
+class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     static globalActionStream$ = new Subject<IGlobalActionSubscription<any>>()
     static dispatch<P = any>(action: IActionEmit<P>) {
         const { type, payload } = action
@@ -44,14 +44,13 @@ class ReObserve<T = void> extends Observable<T> implements SubscriptionLike {
     private _joinStream$!: Observable<T>
     private _joinSubscription!: Subscription
     private _source$ = new Subject<T>()
-    
+
     private _globalAjaxSubscription!: Subscription
     private _globalActionSubscription!: Subscription
 
     public closed = false
 
     constructor(initialState?: T) {
-        super()
         initialState && this.startWith(initialState)
         this._globalAjaxSubscription = ReObserve.globalAjaxStream$.subscribe(ajax => {
             const { type, source, payload } = ajax
