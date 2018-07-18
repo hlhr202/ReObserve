@@ -7,7 +7,6 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     static fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>): void;
     static defaultActionMapper: IActionMapper<any>;
     static defaultAjaxMapper: IAjaxMapper<any>;
-    source: Observable<T | void>;
     private _current;
     private _historyArray;
     private _enableHistory;
@@ -41,7 +40,7 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     error(err: any): void;
     subscribe(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): Subscription;
     unsubscribe(): void;
-    asObservable(): Subscription;
+    asObservable(): Observable<T>;
 }
 export default ReObserve;
 export declare const dispatch: typeof ReObserve.dispatch;
