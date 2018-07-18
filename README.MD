@@ -26,11 +26,11 @@ const initialCounter = {
 const actionMapper = action$ => merge(
     action$.pipe(
         filter(action => action.type === 'INCREMENT'),
-        map(action => ({ counter: action.state.counter + 1 }))
+        map(action => ({ count: action.state.count + 1 }))
     ),
     action$.pipe(
         filter(action => action.type === 'DECREMENT'),
-        map(action => ({ counter: action.state.counter - 1 }))
+        map(action => ({ count: action.state.count - 1 }))
     )
 )
 
