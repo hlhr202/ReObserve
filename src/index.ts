@@ -1,6 +1,6 @@
-import { Subject, Subscription, merge, Observable, empty, PartialObserver, SubscriptionLike, Subscribable, pipe } from "rxjs";
+import { Subject, Subscription, merge, Observable, empty, PartialObserver, SubscriptionLike, Subscribable, pipe, of, throwError } from "rxjs";
 import { IActionSubscription, IActionEmit, IAjaxSubsription, IAjaxEmit, IActionMapper, IAjaxMapper, IGlobalActionSubscription, IGlobalAjaxSubsription } from "./type";
-import { filter, map, startWith } from "rxjs/operators";
+import { filter, map, startWith, catchError } from "rxjs/operators";
 
 class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     static globalActionStream$ = new Subject<IGlobalActionSubscription<any>>()
@@ -14,7 +14,7 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         ajax$.subscribe(payload => {
             ReObserve.globalAjaxStream$.next({ type, payload, source: 'GLOBAL' })
         }, err => {
-            ReObserve.globalAjaxStream$.error(err)
+            ReObserve.globalAjaxStream$.error({ type, err })
         })
     }
 
@@ -33,7 +33,11 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     }
 
     static fromAjax(type: string) {
-        return ReObserve.globalAjaxStream$.pipe(filter(ajax => ajax.type === type))
+        return ReObserve.globalAjaxStream$.pipe(filter(ajax => ajax.type === type), catchError(err => {
+            if (err.type === type) {
+                return throwError(err)
+            } else return of()
+        }))
     }
 
     private _current!: T
@@ -91,8 +95,8 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         return this
     }
 
-    startWith(initialState?: T) {
-        if (initialState) this._current = initialState
+    startWith(initialState: T) {
+        this._current = initialState
         return this
     }
 
