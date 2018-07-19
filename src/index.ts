@@ -30,7 +30,10 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         map(ajax => ajax.payload.response)
     )
 
-    //source!: Observable<T | void>
+    static fromAction(type: string) {
+        return ReObserve.globalActionStream$.pipe(filter(action => action.type === type))
+    }
+
     private _current!: T
     private _historyArray: T[] = []
     private _enableHistory = false
@@ -42,7 +45,6 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
 
     private _histryStream$ = new Subject<T | void>()
     private _joinStream$!: Observable<T>
-    private _joinSubscription!: Subscription
     private _source$ = new Subject<T>()
 
     private _globalAjaxSubscription!: Subscription
@@ -119,30 +121,28 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     }
 
     mapAjax<R = T>(mapper: IAjaxMapper<T, R>) {
-        // mapper(this._ajaxStream$).subscribe(value => {
-        //     this.next(value)
-        // })
         this._ajaxMapper = mapper
         return this
     }
 
     mapAction<R = T>(mapper: IActionMapper<T, R>) {
-        // mapper(this._actionStream$).subscribe(value => {
-        //     this.next(value)
-        // })
         this._actionMapper = mapper
         return this
     }
 
-    // merge(...stream$: (Observable<T | void>[])) {
-    //     this.source = merge(this.source, ...stream$)
-    //     return this
-    // }
+    merge(stream$: Observable<T | void>) {
+        stream$.subscribe(value => this.next(value), error => this.error(error))
+        return this
+    }
+
+    fromAction(type: string) {
+        return this._actionStream$.pipe(filter(action => action.type === type))
+    }
 
     private join() {
         if (!this._joinStream$) {
-            this._actionMapper(this._actionStream$).subscribe(value => this.next(value))
-            this._ajaxMapper(this._ajaxStream$).subscribe(value => this.next(value))
+            this._actionMapper(this._actionStream$).subscribe(value => this.next(value), error => this.error(error))
+            this._ajaxMapper(this._ajaxStream$).subscribe(value => this.next(value), error => this.error(error))
             this._source$.subscribe(next => {
                 if (next && next !== this._current) {
                     const previous = this._current
@@ -171,8 +171,7 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     subscribe(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): Subscription {
         this.join()
         this.closed = false
-        this._joinSubscription = this._joinStream$.subscribe(observerOrNext as ((value: T) => void), error, complete)
-        return this._joinSubscription
+        return this._joinStream$.subscribe(observerOrNext as ((value: T) => void), error, complete)
     }
 
     unsubscribe() {
@@ -184,14 +183,13 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         this._actionStream$.unsubscribe()
         this._source$.unsubscribe()
         this._histryStream$.unsubscribe()
-        this._joinSubscription.unsubscribe()
         this.closed = true
     }
 
     asObservable() {
         this.join()
         this.closed = false
-        return this._joinSubscription
+        return this._joinStream$
     }
 }
 

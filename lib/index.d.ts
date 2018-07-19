@@ -1,5 +1,5 @@
 import { Subject, Subscription, Observable, PartialObserver, SubscriptionLike, Subscribable } from "rxjs";
-import { IActionEmit, IAjaxEmit, IActionMapper, IAjaxMapper, IGlobalActionSubscription, IGlobalAjaxSubsription } from "./type";
+import { IActionSubscription, IActionEmit, IAjaxEmit, IActionMapper, IAjaxMapper, IGlobalActionSubscription, IGlobalAjaxSubsription } from "./type";
 declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     static globalActionStream$: Subject<IGlobalActionSubscription<any>>;
     static dispatch<P = any>(action: IActionEmit<P>): void;
@@ -7,7 +7,7 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     static fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>): void;
     static defaultActionMapper: IActionMapper<any>;
     static defaultAjaxMapper: IAjaxMapper<any>;
-    source: Observable<T | void>;
+    static fromAction(type: string): Observable<IGlobalActionSubscription<any>>;
     private _current;
     private _historyArray;
     private _enableHistory;
@@ -18,7 +18,6 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     private _ajaxMapper;
     private _histryStream$;
     private _joinStream$;
-    private _joinSubscription;
     private _source$;
     private _globalAjaxSubscription;
     private _globalActionSubscription;
@@ -35,13 +34,15 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>): this;
     mapAjax<R = T>(mapper: IAjaxMapper<T, R>): this;
     mapAction<R = T>(mapper: IActionMapper<T, R>): this;
+    merge(stream$: Observable<T | void>): this;
+    fromAction(type: string): Observable<IActionSubscription<T, any>>;
     private join;
     next(value: T | void): void;
     complete(): void;
     error(err: any): void;
     subscribe(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): Subscription;
     unsubscribe(): void;
-    asObservable(): Subscription;
+    asObservable(): Observable<T>;
 }
 export default ReObserve;
 export declare const dispatch: typeof ReObserve.dispatch;
