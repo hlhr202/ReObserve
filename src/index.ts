@@ -32,6 +32,10 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         return ReObserve.globalActionStream$.pipe(filter(action => action.type === type))
     }
 
+    static fromAjax(type: string) {
+        return ReObserve.globalAjaxStream$.pipe(filter(ajax => ajax.type === type))
+    }
+
     private _current!: T
     private _historyArray: T[] = []
     private _enableHistory = false
@@ -135,16 +139,20 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         return this._actionStream$.pipe(filter(action => action.type === type))
     }
 
+    fromAjax(type: string) {
+        return this._ajaxStream$.pipe(filter(ajax => ajax.type === type))
+    }
+
     private join() {
         if (!this._joinStream$) {
             this._actionMapper(this._actionStream$).subscribe(value => this.next(value), error => this.error(error))
             this._ajaxMapper(this._ajaxStream$).subscribe(value => this.next(value), error => this.error(error))
             this._source$.subscribe(next => {
-                if (next && next !== this._current) {
+                if (next !== this._current) {
                     const previous = this._current
                     this._enableHistory && this._historyArray.push(previous)
                     this._current = next
-                    this._watcher && previous !== next && this._watcher(previous, next)
+                    this._watcher && this._watcher(previous, next)
                 }
             })
             this._joinStream$ = merge<T>(this._histryStream$, this._source$).pipe(startWith(this._current))
@@ -153,15 +161,15 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     }
 
     next(value: T | void) {
-        return value && this._source$ ? this._source$.next(value) : undefined
+        return this._source$.next(value || undefined)
     }
 
     complete() {
-        return this._source$ ? this._source$.complete() : undefined
+        return this._source$.complete()
     }
 
     error(err: any) {
-        return this._source$ ? this._source$.error(err) : undefined
+        return this._source$.error(err)
     }
 
     subscribe(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): Subscription {

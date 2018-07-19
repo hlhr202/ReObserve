@@ -1,5 +1,5 @@
 import { Subject, Subscription, Observable, PartialObserver, SubscriptionLike, Subscribable } from "rxjs";
-import { IActionSubscription, IActionEmit, IAjaxEmit, IActionMapper, IAjaxMapper, IGlobalActionSubscription, IGlobalAjaxSubsription } from "./type";
+import { IActionSubscription, IActionEmit, IAjaxSubsription, IAjaxEmit, IActionMapper, IAjaxMapper, IGlobalActionSubscription, IGlobalAjaxSubsription } from "./type";
 declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     static globalActionStream$: Subject<IGlobalActionSubscription<any>>;
     static dispatch<P = any>(action: IActionEmit<P>): void;
@@ -8,6 +8,7 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     static defaultActionMapper: IActionMapper<any>;
     static defaultAjaxMapper: IAjaxMapper<any>;
     static fromAction(type: string): Observable<IGlobalActionSubscription<any>>;
+    static fromAjax(type: string): Observable<IGlobalAjaxSubsription<any>>;
     private _current;
     private _historyArray;
     private _enableHistory;
@@ -36,6 +37,7 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     mapAction<R = T>(mapper: IActionMapper<T, R>): this;
     merge(stream$: Observable<T | void>): this;
     fromAction(type: string): Observable<IActionSubscription<T, any>>;
+    fromAjax(type: string): Observable<IAjaxSubsription<any, any>>;
     private join;
     next(value: T | void): void;
     complete(): void;
