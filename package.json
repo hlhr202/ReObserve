@@ -1,6 +1,6 @@
 {
   "name": "@hlhr202/reobserve",
-  "version": "0.1.5",
+  "version": "0.1.7",
   "description": "Powerful observable state transition library that utilised Rx.js and Redux design pattern",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

@@ -15,8 +15,6 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
             ReObserve.globalAjaxStream$.next({ type, payload, source: 'GLOBAL' })
         }, err => {
             ReObserve.globalAjaxStream$.error(err)
-        }, () => {
-            ReObserve.globalAjaxStream$.complete()
         })
     }
 
@@ -114,8 +112,6 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
             this._ajaxStream$.next({ type, payload, source: 'SELF', state: this._current })
         }, err => {
             this._ajaxStream$.error(err)
-        }, () => {
-            this._ajaxStream$.complete()
         })
         return this
     }
