@@ -36,7 +36,7 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     mapAjax<R = T>(mapper: IAjaxMapper<T, R>): this;
     mapAction<R = T>(mapper: IActionMapper<T, R>): this;
     merge(stream$: Observable<T>): this;
-    mergeReduce(stream$: Observable<T>, reducer: (curr: T, next: T) => T): void;
+    mergeReduce(stream$: Observable<T>, reducer: (curr: T, next: T) => T): this;
     fromAction(type: string): Observable<IActionSubscription<T, any>>;
     fromAjax(type: string): Observable<IAjaxSubsription<any, any>>;
     private join;

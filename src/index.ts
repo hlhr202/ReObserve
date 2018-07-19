@@ -140,6 +140,7 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
             const next = reducer(this._current, value)
             this.next(next)
         }, error => this.error(error))
+        return this
     }
 
     fromAction(type: string) {
