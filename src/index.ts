@@ -45,7 +45,7 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     private _actionMapper = ReObserve.defaultActionMapper
     private _ajaxMapper = ReObserve.defaultAjaxMapper
 
-    private _histryStream$ = new Subject<T | void>()
+    private _histryStream$ = new Subject<T>()
     private _joinStream$!: Observable<T>
     private _source$ = new Subject<T>()
 
@@ -130,9 +130,16 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         return this
     }
 
-    merge(stream$: Observable<T | void>) {
+    merge(stream$: Observable<T>) {
         stream$.subscribe(value => this.next(value), error => this.error(error))
         return this
+    }
+
+    mergeReduce(stream$: Observable<T>, reducer: (curr: T, next: T) => T) {
+        stream$.subscribe(value => {
+            const next = reducer(this._current, value)
+            this.next(next)
+        }, error => this.error(error))
     }
 
     fromAction(type: string) {
@@ -160,8 +167,8 @@ class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
         }
     }
 
-    next(value: T | void) {
-        return this._source$.next(value || undefined)
+    next(value: T) {
+        return this._source$.next(value)
     }
 
     complete() {

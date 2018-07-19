@@ -35,11 +35,12 @@ declare class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
     fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>): this;
     mapAjax<R = T>(mapper: IAjaxMapper<T, R>): this;
     mapAction<R = T>(mapper: IActionMapper<T, R>): this;
-    merge(stream$: Observable<T | void>): this;
+    merge(stream$: Observable<T>): this;
+    mergeReduce(stream$: Observable<T>, reducer: (curr: T, next: T) => T): void;
     fromAction(type: string): Observable<IActionSubscription<T, any>>;
     fromAjax(type: string): Observable<IAjaxSubsription<any, any>>;
     private join;
-    next(value: T | void): void;
+    next(value: T): void;
     complete(): void;
     error(err: any): void;
     subscribe(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): Subscription;
