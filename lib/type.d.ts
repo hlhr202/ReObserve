@@ -1,5 +1,6 @@
-import { Observable } from "rxjs";
+import { Observable } from 'rxjs';
 import { AjaxResponse } from 'rxjs/ajax';
+import ReObserve from './index';
 export interface IAjaxResponse<T> extends AjaxResponse {
     response: T;
 }
@@ -29,6 +30,6 @@ export interface IAjaxEmit<T> {
     type: string;
     ajax$: Observable<IAjaxResponse<T>>;
 }
-export declare type IActionMapper<C, A = any> = (action$: Observable<IActionSubscription<C, A>>) => Observable<C | void>;
-export declare type IAjaxMapper<C, A = any> = (ajax$: Observable<IAjaxSubsription<C, A>>) => Observable<C | void>;
+export declare type IActionMapper<C, A = any> = (action$: Observable<IActionSubscription<C, A>>, context$?: any | ReObserve<C>) => Observable<C | void>;
+export declare type IAjaxMapper<C, A = any> = (ajax$: Observable<IAjaxSubsription<C, A>>, context$?: any | ReObserve<C>) => Observable<C | void>;
 //# sourceMappingURL=type.d.ts.map

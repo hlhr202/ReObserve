@@ -1,214 +1,332 @@
-import { Subject, Subscription, merge, Observable, empty, PartialObserver, SubscriptionLike, Subscribable, pipe, of, throwError } from "rxjs";
-import { IActionSubscription, IActionEmit, IAjaxSubsription, IAjaxEmit, IActionMapper, IAjaxMapper, IGlobalActionSubscription, IGlobalAjaxSubsription } from "./type";
-import { filter, map, startWith, catchError } from "rxjs/operators";
+import {
+	Subject,
+	Subscription,
+	merge,
+	Observable,
+	Observer,
+	PartialObserver,
+	SubscriptionLike,
+	Subscribable,
+	of,
+	throwError,
+} from 'rxjs';
+import {
+	IActionSubscription,
+	IActionEmit,
+	IAjaxSubsription,
+	IAjaxEmit,
+	IActionMapper,
+	IAjaxMapper,
+	IGlobalActionSubscription,
+	IGlobalAjaxSubsription,
+} from './type';
+import { filter, map, startWith, catchError } from 'rxjs/operators';
 
-class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike {
-    static globalActionStream$ = new Subject<IGlobalActionSubscription<any>>()
-    static dispatch<P = any>(action: IActionEmit<P>) {
-        const { type, payload } = action
-        ReObserve.globalActionStream$.next({ type, payload, source: 'GLOBAL' })
-    }
+class ReObserve<T = void> implements Subscribable<T>, SubscriptionLike, Observer<T> {
 
-    static globalAjaxStream$ = new Subject<IGlobalAjaxSubsription<any>>()
-    static fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>) {
-        ajax$.subscribe(payload => {
-            ReObserve.globalAjaxStream$.next({ type, payload, source: 'GLOBAL' })
-        }, err => {
-            ReObserve.globalAjaxStream$.error({ type, err })
-        })
-    }
+	/**
+	 * Global Action Stream
+	 * @static
+	 */
+	static globalActionStream$ = new Subject<IGlobalActionSubscription<any>>();
 
-    static defaultActionMapper: IActionMapper<any> = action$ => action$.pipe(
-        filter(action => action.source === 'SELF'),
-        map(action => action.payload)
-    )
+	/**
+	 * Global Dispatcher
+	 * @param {IActionEmit<P>} action action that will be emit to action stream, payload in generic type
+	 */
+	static dispatch<P = any>(action: IActionEmit<P>) {
+		const { type, payload } = action;
+		ReObserve.globalActionStream$.next({ type, payload, source: 'GLOBAL' });
+	}
 
-    static defaultAjaxMapper: IAjaxMapper<any> = ajax$ => ajax$.pipe(
-        filter(ajax => ajax.source === 'SELF'),
-        map(ajax => ajax.payload.response)
-    )
+	/**
+	 * Global Ajax Strema
+	 */
+	static globalAjaxStream$ = new Subject<IGlobalAjaxSubsription<any>>();
 
-    static fromAction(type: string) {
-        return ReObserve.globalActionStream$.pipe(filter(action => action.type === type))
-    }
+	/**
+	 * Global Fetch
+	 * @param {IAjaxEmit<R>} ajax ajax that will be emit to ajax stream, response in generic type
+	 */
+	static fetch<R = any>(ajax: IAjaxEmit<R>) {
+		const { type, ajax$ } = ajax
+		ajax$.subscribe(
+			payload => {
+				ReObserve.globalAjaxStream$.next({ type, payload, source: 'GLOBAL' });
+			},
+			err => {
+				ReObserve.globalAjaxStream$.error({ type, err });
+			}
+		);
+	}
 
-    static fromAjax(type: string) {
-        return ReObserve.globalAjaxStream$.pipe(filter(ajax => ajax.type === type), catchError(err => {
-            if (err.type === type) {
-                return throwError(err)
-            } else return of()
-        }))
-    }
+	/**
+	 * Return action observable in type
+	 * @param {string} type type of action in string format
+	 */
+	static fromAction(type: string) {
+		return ReObserve.globalActionStream$.pipe(filter(action => action.type === type));
+	}
 
-    private _current!: T
-    private _historyArray: T[] = []
-    private _enableHistory = false
-    private _watcher?: (prev: T, curr: T) => void
-    private _actionStream$ = new Subject<IActionSubscription<T, any>>()
-    private _ajaxStream$ = new Subject<IAjaxSubsription<any>>()
-    private _actionMapper = ReObserve.defaultActionMapper
-    private _ajaxMapper = ReObserve.defaultAjaxMapper
+	/**
+	 * Return ajax observable in type
+	 * @param {string} type type of ajax in string format
+	 */
+	static fromAjax(type: string) {
+		return ReObserve.globalAjaxStream$.pipe(
+			filter(ajax => ajax.type === type),
+			catchError(err => {
+				if (err.type === type) {
+					return throwError(err);
+				} else return of();
+			})
+		);
+	}
 
-    private _histryStream$ = new Subject<T>()
-    private _joinStream$!: Observable<T>
-    private _source$ = new Subject<T>()
+	/**
+	 * ReObserve factory mode create function
+	 * @param {C} initialState initialState
+	 * @returns {ReObserve<C>} new instance
+	 */
+	static create<C = {}>(initialState?: C) {
+		return new ReObserve<C>(initialState);
+	}
 
-    private _globalAjaxSubscription!: Subscription
-    private _globalActionSubscription!: Subscription
+	private _current!: T;
+	private _historyArray: T[] = [];
+	private _enableHistory = false;
+	private _watcher?: (prev: T, curr: T) => void;
+	private _actionStream$ = new Subject<IActionSubscription<T, any>>();
+	private _ajaxStream$ = new Subject<IAjaxSubsription<any>>();
+	private _actionMapper?: IActionMapper<any, any>;
+	private _ajaxMapper?: IAjaxMapper<any, any>;
 
-    public closed = false
+	private _histryStream$ = new Subject<T>();
+	private _joinStream$!: Observable<T>;
+	private _source$ = new Subject<T>();
 
-    constructor(initialState?: T) {
-        initialState && this.startWith(initialState)
-        this._globalAjaxSubscription = ReObserve.globalAjaxStream$.subscribe(ajax => {
-            const { type, source, payload } = ajax
-            this._ajaxStream$.next({ type, source, payload, state: this._current })
-        })
-        this._globalActionSubscription = ReObserve.globalActionStream$.subscribe(action => {
-            const { type, source, payload } = action
-            this._actionStream$.next({ type, source, payload, state: this._current })
-        })
-        this.mapAction(ReObserve.defaultActionMapper).mapAjax(ReObserve.defaultAjaxMapper)
-        return this
-    }
+	private _globalAjaxSubscription!: Subscription;
+	private _globalActionSubscription!: Subscription;
 
-    static create = <C = {}>(initialState?: C) => {
-        return new ReObserve<C>(initialState)
-    }
-    get current() {
-        return this._current
-    }
-    get histories() {
-        return this._historyArray
-    }
+	private _subscriptions: Subscription[] = [];
+	private _context: any | ReObserve<T> = this;
 
-    undo() {
-        if (this._enableHistory) {
-            const previous = this._historyArray.pop()
-            const current = this._current
-            if (previous) {
-                this._histryStream$.next(previous)
-                this._current = previous
-                this._watcher && this._watcher(current, previous)
-            }
-        }
-        return this
-    }
+	public closed = false;
 
-    startWith(initialState: T) {
-        this._current = initialState
-        return this
-    }
+	/**
+	 * Create a new ReObserve
+	 * @constructor
+	 * @param initialState initialState
+	 */
+	constructor(initialState?: T) {
+		initialState && this.startWith(initialState);
+		this._globalAjaxSubscription = ReObserve.globalAjaxStream$.subscribe(ajax => {
+			const { type, source, payload } = ajax;
+			this._ajaxStream$.next({ type, source, payload, state: this._current });
+		});
+		this._globalActionSubscription = ReObserve.globalActionStream$.subscribe(action => {
+			const { type, source, payload } = action;
+			this._actionStream$.next({ type, source, payload, state: this._current });
+		});
+		return this;
+	}
 
-    withRecord(flag: boolean) {
-        this._enableHistory = flag
-        return this
-    }
+	get current() {
+		return this._current;
+	}
 
-    watch(watcher: (prev: T, curr: T) => void) {
-        this._watcher = watcher
-        return this
-    }
+	get histories() {
+		return this._historyArray;
+	}
 
-    dispatch<P = any>(action: IActionEmit<P>) {
-        const { type, payload } = action
-        !this.closed && this._actionStream$.next({ type, payload, source: 'SELF', state: this._current })
-    }
+	/**
+	 * Bind context for mapper function
+	 * @returns {ReObserve<T>} this
+	 * @param {any|ReObserve<T>} context defualt context will be 'this'
+	 */
+	bind(context: any | ReObserve<T> = this) {
+		this._context = context;
+		return this;
+	}
 
-    fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>) {
-        !this.closed && ajax$.subscribe(payload => {
-            this._ajaxStream$.next({ type, payload, source: 'SELF', state: this._current })
-        }, err => {
-            this._ajaxStream$.error(err)
-        })
-        return this
-    }
+	/**
+	 * Undo function (Yet not ready)
+	 * @deprecated
+	 * @returns {ReObserve<T>} this
+	 */
+	_undo() {
+		if (this._enableHistory) {
+			const previous = this._historyArray.pop();
+			const current = this._current;
+			if (previous) {
+				this._histryStream$.next(previous);
+				this._current = previous;
+				this._watcher && this._watcher(current, previous);
+			}
+		}
+		return this;
+	}
 
-    mapAjax<R = T>(mapper: IAjaxMapper<T, R>) {
-        this._ajaxMapper = mapper
-        return this
-    }
+	/**
+	 * Start with initial state
+	 * @param {T} initialState will set current
+	 */
+	startWith(initialState: T) {
+		this._current = initialState;
+		return this;
+	}
 
-    mapAction<R = T>(mapper: IActionMapper<T, R>) {
-        this._actionMapper = mapper
-        return this
-    }
+	withRecord(flag: boolean) {
+		this._enableHistory = flag;
+		return this;
+	}
 
-    merge(stream$: Observable<T>) {
-        stream$.subscribe(value => this.next(value), error => this.error(error))
-        return this
-    }
+	watch(watcher: (prev: T, curr: T) => void) {
+		this._watcher = watcher;
+		return this;
+	}
 
-    mergeReduce(stream$: Observable<T>, reducer: (curr: T, next: T) => T) {
-        stream$.subscribe(value => {
-            const next = reducer(this._current, value)
-            this.next(next)
-        }, error => this.error(error))
-        return this
-    }
+	dispatch<P = any>(action: IActionEmit<P>) {
+		const { type, payload } = action;
+		!this.closed && this._actionStream$.next({ type, payload, source: 'SELF', state: this._current });
+	}
 
-    fromAction(type: string) {
-        return this._actionStream$.pipe(filter(action => action.type === type))
-    }
+	fetch<R = any>({ type, ajax$ }: IAjaxEmit<R>) {
+		!this.closed &&
+			ajax$.subscribe(
+				payload => {
+					this._ajaxStream$.next({ type, payload, source: 'SELF', state: this._current });
+				},
+				err => {
+					this._ajaxStream$.error(err);
+				}
+			);
+		return this;
+	}
 
-    fromAjax(type: string) {
-        return this._ajaxStream$.pipe(filter(ajax => ajax.type === type))
-    }
+	mapAjax<R = T>(mapper: IAjaxMapper<T, R>) {
+		this._ajaxMapper = mapper;
+		return this;
+	}
 
-    private join() {
-        if (!this._joinStream$) {
-            this._actionMapper(this._actionStream$).subscribe(value => this.next(value), error => this.error(error))
-            this._ajaxMapper(this._ajaxStream$).subscribe(value => this.next(value), error => this.error(error))
-            this._source$.subscribe(next => {
-                if (next !== this._current) {
-                    const previous = this._current
-                    this._enableHistory && this._historyArray.push(previous)
-                    this._current = next
-                    this._watcher && this._watcher(previous, next)
-                }
-            })
-            this._joinStream$ = merge<T>(this._histryStream$, this._source$).pipe(startWith(this._current))
-            this.closed = false
-        }
-    }
+	mapAction<R = T>(mapper: IActionMapper<T, R>) {
+		this._actionMapper = mapper;
+		return this;
+	}
 
-    next(value: T) {
-        return this._source$.next(value)
-    }
+	merge(stream$: Observable<T>) {
+		this._subscriptions.push(stream$.subscribe(value => this.next(value), error => this.error(error)));
+		return this;
+	}
 
-    complete() {
-        return this._source$.complete()
-    }
+	mergeReduce<N>(stream$: Observable<N>, reducer: (curr: T, next: N) => T) {
+		this._subscriptions.push(
+			stream$.subscribe(
+				value => {
+					const nextValue = reducer(this.current, value);
+					//console.log('nextValue', nextValue)
+					this.next(nextValue);
+				},
+				error => this.error(error)
+			)
+		);
+		return this;
+	}
 
-    error(err: any) {
-        return this._source$.error(err)
-    }
+	fromAction(type: string) {
+		return this._actionStream$.pipe(filter(action => action.type === type));
+	}
 
-    subscribe(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): Subscription {
-        this.join()
-        this.closed = false
-        return this._joinStream$.subscribe(observerOrNext as ((value: T) => void), error, complete)
-    }
+	fromAjax(type: string) {
+		return this._ajaxStream$.pipe(filter(ajax => ajax.type === type));
+	}
 
-    unsubscribe() {
+	private join() {
+		if (!this._joinStream$) {
+			this._actionMapper &&
+				this._actionMapper(this._actionStream$, this._context).subscribe(
+					value => this.next(value),
+					error => this.error(error)
+				);
+			this._ajaxMapper &&
+				this._ajaxMapper(this._ajaxStream$, this._context).subscribe(
+					value => this.next(value),
+					error => this.error(error)
+				);
+			this._source$.subscribe(next => {
+				if (next !== this._current) {
+					const previous = this._current;
+					this._enableHistory && this._historyArray.push(previous);
+					this._current = next;
+					this._watcher && this._watcher(previous, next);
+				}
+			});
+			this._joinStream$ = merge<T>(this._histryStream$, this._source$).pipe(startWith(this._current));
+			this.closed = false;
+		}
+	}
 
-        this._globalActionSubscription.unsubscribe()
-        this._globalAjaxSubscription.unsubscribe()
+	/**
+	 * Call next function, implements Observer.next
+	 * @param {T} value next value
+	 */
+	next(value: T) {
+		return this._source$.next(value);
+	}
 
-        this._ajaxStream$.unsubscribe()
-        this._actionStream$.unsubscribe()
-        this._source$.unsubscribe()
-        this._histryStream$.unsubscribe()
-        this.closed = true
-    }
+	/**
+	 * Call complete, implements Observer.complete
+	 */
+	complete() {
+		return this._source$.complete();
+	}
 
-    asObservable() {
-        this.join()
-        this.closed = false
-        return this._joinStream$
-    }
+	/**
+	 * Call error, implements Observer.error
+	 * @param {any} err error
+	 */
+	error(err: any) {
+		return this._source$.error(err);
+	}
+
+	/**
+	 * Create Subscription, implements Subscribable
+	 * @param {PartialObserver<T> | ((value: T) => void)} observerOrNext 
+	 * @param {(error: any) => void} error 
+	 * @param {() => void} complete 
+	 * @returns {Subscription}
+	 */
+	subscribe(
+		observerOrNext?: PartialObserver<T> | ((value: T) => void),
+		error?: (error: any) => void,
+		complete?: () => void
+	): Subscription {
+		this.join();
+		this.closed = false;
+		return this._joinStream$.subscribe(observerOrNext as ((value: T) => void), error, complete);
+	}
+
+	unsubscribe() {
+		this._globalActionSubscription.unsubscribe();
+		this._globalAjaxSubscription.unsubscribe();
+		this._subscriptions.forEach(subscription => subscription.unsubscribe());
+
+		this._ajaxStream$.unsubscribe();
+		this._actionStream$.unsubscribe();
+		this._source$.unsubscribe();
+		this._histryStream$.unsubscribe();
+		this.closed = true;
+	}
+
+	asObservable() {
+		this.join();
+		this.closed = false;
+		return this._joinStream$;
+	}
 }
 
-export default ReObserve
-export const dispatch = ReObserve.dispatch
-export const fetch = ReObserve.fetch
+export default ReObserve;
+export const dispatch = ReObserve.dispatch;
+export const fetch = ReObserve.fetch;
+export const fromAction = ReObserve.fromAction;
+export const fromAjax = ReObserve.fromAjax;
